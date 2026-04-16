@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Image enhancement algorithm combining histogram equalization and bilateral filtering</title>
+    <style>
+        @import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap");
+
+        :root {
+            --bg: #f5f7fb;
+            --panel: #ffffff;
+            --line: #e5eaf3;
+            --text: #0f172a;
+            --muted: #5b6880;
+            --blue: #2563eb;
+            --blue-soft: #dbeafe;
+            --green: #16a34a;
+            --error: #dc2626;
+            --shadow: 0 8px 30px rgba(15, 23, 42, 0.08);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: "Poppins", "Segoe UI", Arial, sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(1200px 420px at 100% -10%, #e7f0ff 0%, transparent 70%),
+                radial-gradient(900px 300px at -5% -10%, #edf6ff 0%, transparent 65%),
+                var(--bg);
+        }
+
+        .wrap {
+            max-width: 1240px;
+            margin: 0 auto;
+            padding: 28px 24px 36px;
+        }
+
+        .card {
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            padding: 18px;
+            margin-bottom: 16px;
+            background: var(--panel);
+            box-shadow: var(--shadow);
+        }
+
+        .muted {
+            color: var(--muted);
+        }
+
+        .front-title {
+            border: 1px solid rgba(37, 99, 235, 0.25);
+            border-radius: 22px;
+            padding: 16px 24px;
+            margin-bottom: 18px;
+            color: #fff;
+            font-size: 30px;
+            font-weight: 800;
+            letter-spacing: 0.01em;
+            background: linear-gradient(95deg, #12427f, #3a86dc);
+            box-shadow: 0 16px 30px rgba(29, 78, 216, 0.18);
+        }
+
+        .front {
+            border-radius: 24px;
+            padding: 22px 26px 20px;
+        }
+
+        .front-grid {
+            display: grid;
+            grid-template-columns: 1fr 1.45fr;
+            gap: 22px;
+            align-items: start;
+        }
+
+        .front-heading {
+            margin: 10px 0 10px;
+            font-size: 36px;
+            line-height: 1.12;
+            letter-spacing: -0.025em;
+            color: #17345d;
+        }
+
+        .front-copy {
+            margin: 0 0 18px;
+            font-size: 14px;
+            line-height: 1.55;
+            color: #4f5e75;
+            max-width: 720px;
+        }
+
+        .front-label {
+            margin: 0 0 6px;
+            font-size: 22px;
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
+            color: #3f5b82;
+            font-weight: 700;
+        }
+
+        .front-meta {
+            margin: 0 0 16px;
+            color: #17345d;
+            font-size: 15px;
+            line-height: 1.35;
+            font-weight: 600;
+        }
+
+        .front-authors {
+            font-size: 12px;
+            line-height: 1.6;
+            font-weight: 500;
+            color: #334155;
+        }
+
+        .front-actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 6px;
+        }
+
+        .btn-pdf {
+            display: inline-flex;
+            align-items: center;
+            gap: 9px;
+            text-decoration: none;
+            border-radius: 13px;
+            padding: 11px 17px;
+            font-size: 14px;
+            font-weight: 700;
+            border: 1px solid #a9c5f5;
+            color: #1452a8;
+            background: #f5f9ff;
+            transition: 0.16s ease;
+        }
+
+        .btn-pdf:hover {
+            border-color: #5d95e7;
+            background: #eaf2ff;
+        }
+
+        .btn-pdf.primary {
+            color: #ffffff;
+            border-color: transparent;
+            background: linear-gradient(135deg, #1769d8, #0f4ea5);
+        }
+
+        .front-viewer {
+            border: 1px solid #ccdaee;
+            border-radius: 16px;
+            padding: 10px;
+            background: #f8fbff;
+            min-height: 520px;
+        }
+
+        .front-viewer iframe {
+            width: 100%;
+            height: 100%;
+            min-height: 500px;
+            border: 0;
+            border-radius: 12px;
+            background: #eef3fb;
+        }
+
+        .hero {
+            display: flex;
+            justify-content: space-between;
+            gap: 14px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 32px;
+            line-height: 1.1;
+            letter-spacing: -0.02em;
+        }
+
+        .hero p {
+            margin: 8px 0 0;
+            max-width: 760px;
+            line-height: 1.5;
+        }
+
+        .badge {
+            background: var(--blue-soft);
+            color: var(--blue);
+            border: 1px solid #bfdbfe;
+            border-radius: 999px;
+            padding: 8px 12px;
+            font-weight: 600;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 330px 1fr;
+            gap: 16px;
+            align-items: start;
+        }
+
+        .row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            background: #ffffff;
+            color: var(--text);
+            padding: 10px 14px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: 0.16s ease;
+        }
+
+        button:hover {
+            border-color: #cdd8eb;
+            background: #f8fbff;
+        }
+
+        button.primary {
+            background: linear-gradient(135deg, var(--blue), #4f46e5);
+            border-color: transparent;
+            color: #fff;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        #drop {
+            border: 1.5px dashed #c7d3e8;
+            border-radius: 12px;
+            padding: 20px;
+            cursor: pointer;
+            margin-bottom: 10px;
+            background: #f8fbff;
+            transition: 0.16s ease;
+        }
+
+        #drop.drag {
+            border-color: var(--blue);
+            background: var(--blue-soft);
+        }
+
+        .chips {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+
+        .split {
+            display: grid;
+            grid-template-columns: 1.1fr 1fr;
+            gap: 14px;
+            margin-bottom: 14px;
+        }
+
+        .panel {
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            background: #fff;
+            padding: 12px;
+        }
+
+        .panel-title {
+            margin: 0 0 10px;
+            font-size: 13px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--muted);
+            font-weight: 700;
+        }
+
+        .image-box {
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid var(--line);
+            background: #f8fafc;
+        }
+
+        .image-box img {
+            width: 100%;
+            aspect-ratio: 16 / 10;
+            object-fit: cover;
+            display: block;
+        }
+
+        .stages {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .stage {
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            overflow: hidden;
+            background: #fff;
+        }
+
+        .stage h5 {
+            margin: 0;
+            padding: 8px 9px;
+            border-bottom: 1px solid var(--line);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #1d4ed8;
+        }
+
+        .stage img {
+            width: 100%;
+            aspect-ratio: 4 / 3;
+            object-fit: cover;
+            display: block;
+            background: #f1f5f9;
+        }
+
+        .chip {
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            padding: 8px 12px;
+            background: #fff;
+            cursor: pointer;
+        }
+
+        .chip.active {
+            background: var(--blue-soft);
+            color: var(--blue);
+            border-color: #bfdbfe;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 12px;
+        }
+
+        .triple {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .mini-panel {
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            background: #fff;
+            overflow: hidden;
+        }
+
+        .mini-panel h5 {
+            margin: 0;
+            padding: 8px 10px;
+            border-bottom: 1px solid var(--line);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #1d4ed8;
+        }
+
+        .hist-wrap {
+            padding: 8px;
+            height: 120px;
+        }
+
+        .hist-wrap canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .method {
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            overflow: hidden;
+            background: #fff;
+            transition: 0.16s ease;
+            cursor: pointer;
+        }
+
+        .method:hover {
+            border-color: #bfd0ee;
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.08);
+            transform: translateY(-1px);
+        }
+
+        .method h4 {
+            margin: 0;
+            padding: 11px 12px;
+            font-size: 12px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--blue);
+            border-bottom: 1px solid var(--line);
+        }
+
+        .method img {
+            width: 100%;
+            aspect-ratio: 4 / 3;
+            object-fit: cover;
+            display: block;
+            background: #f1f5f9;
+        }
+
+        .metrics {
+            padding: 10px 12px;
+            font-size: 12px;
+            line-height: 1.65;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 10px;
+            border-bottom: 1px solid var(--line);
+            text-align: left;
+        }
+
+        th {
+            color: var(--muted);
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+
+        .section-title {
+            margin: 0 0 12px;
+            font-size: 18px;
+        }
+
+        .compare {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .compare .image-box img {
+            aspect-ratio: 4 / 3;
+        }
+
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.55);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+            padding: 20px;
+        }
+
+        .modal.open {
+            display: flex;
+        }
+
+        .modal-card {
+            width: min(880px, 100%);
+            background: #fff;
+            border-radius: 16px;
+            border: 1px solid var(--line);
+            box-shadow: 0 20px 50px rgba(15, 23, 42, 0.2);
+            overflow: hidden;
+        }
+
+        .modal-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .modal-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            padding: 12px;
+        }
+
+        .modal-grid .image-box img {
+            aspect-ratio: 16 / 10;
+        }
+
+        #status {
+            font-weight: 600;
+        }
+
+        .ok {
+            color: var(--green);
+        }
+
+        #error {
+            color: var(--error);
+            white-space: pre-wrap;
+            margin-top: 8px;
+        }
+
+        @media (max-width: 1024px) {
+            .front-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .front-heading {
+                font-size: 30px;
+            }
+
+            .front-meta {
+                font-size: 14px;
+            }
+
+            .front-copy {
+                font-size: 13px;
+            }
+
+            .layout {
+                grid-template-columns: 1fr;
+            }
+
+            .split {
+                grid-template-columns: 1fr;
+            }
+
+            .stages {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .front-title {
+                font-size: 24px;
+                padding: 12px 16px;
+                border-radius: 14px;
+            }
+
+            .front {
+                padding: 16px;
+            }
+
+            .front-heading {
+                font-size: 24px;
+            }
+
+            .front-meta {
+                font-size: 13px;
+            }
+
+            .btn-pdf {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .front-viewer {
+                min-height: 390px;
+            }
+
+            .front-viewer iframe {
+                min-height: 370px;
+            }
+
+            .stages {
+                grid-template-columns: 1fr;
+            }
+
+            .triple,
+            .compare,
+            .modal-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrap">
+        <div class="front-title">Computer Vision Dashboard</div>
+
+        <div class="card front">
+            <div class="front-grid">
+                <div>
+                    <p class="panel-title" style="margin-bottom:8px;">Project Details</p>
+                    <h1 class="front-heading">Image Enhancement Algorithm Combining Histogram Equalization and Bilateral
+                        Filtering</h1>
+                    <p class="front-copy">This dashboard processes uploaded images through a notebook-driven pipeline
+                        and compares enhancement quality using PSNR, SSIM, entropy, and contrast metrics.</p>
+
+                    <p class="panel-title" style="margin-bottom:8px;">Course</p>
+                    <p class="front-meta">IT416 Computer Vision Course Project</p>
+
+                    <p class="panel-title" style="margin-bottom:8px;">Authors</p>
+                    <p class="front-meta front-authors">1. Kalal Pavan Teja - 23I1T030<br>2. Medicharla Harsha Naga
+                        Durga Sathish -
+                        23I1T038<br>3. Medikurthi Sai Govardhan Rao - 23I1T039</p>
+
+                    <div class="front-actions">
+                        <a class="btn-pdf primary" href="/paper.pdf" target="_blank" rel="noopener noreferrer">Open
+                            PDF</a>
+                        <a class="btn-pdf" href="/paper.pdf" download>Download PDF</a>
+                    </div>
+                </div>
+
+                <div>
+                    <p class="panel-title" style="margin-bottom:8px;">Embedded Paper Viewer</p>
+                    <div class="front-viewer">
+                        <iframe src="/paper.pdf" title="Project paper preview"></iframe>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card hero">
+            <div>
+                <h1>Notebook Pipeline Runner</h1>
+                <p class="muted">Upload image files or a ZIP archive. This dashboard sends your files to Flask, runs the
+                    notebook pipeline, and renders real output images plus summary metrics.</p>
+            </div>
+            <div class="badge">Notebook-driven processing</div>
+        </div>
+
+        <div class="layout">
+            <div class="card">
+                <h3 class="section-title">Upload</h3>
+                <div id="drop"><strong>Drop images or ZIP here</strong><br><span class="muted">PNG, JPG, JPEG,
+                        ZIP</span>
+                </div>
+                <input id="files" type="file" multiple accept="image/*,.zip" hidden>
+                <div class="row">
+                    <button id="browse">Choose Files</button>
+                    <button id="run" class="primary">Run Processing</button>
+                    <button id="exportReport" type="button" disabled>Export Report Screenshots</button>
+                </div>
+                <div id="selected" class="muted" style="margin-top:10px; white-space: pre-wrap;">No files selected.
+                </div>
+                <div id="status" class="muted" style="margin-top:10px;"></div>
+                <div id="error"></div>
+            </div>
+
+            <div>
+                <div class="card" id="resultCard" style="display:none;">
+                    <h3 class="section-title">Images</h3>
+                    <div id="imageTabs" class="chips"></div>
+                    <div class="split">
+                        <div class="panel">
+                            <h4 class="panel-title">Selected Input Image</h4>
+                            <div id="selectedImage" class="image-box"></div>
+                        </div>
+                    </div>
+
+                    <div class="panel">
+                        <h4 class="panel-title">Histogram Comparison (Original vs HE vs Our)</h4>
+                        <div class="triple">
+                            <div class="mini-panel">
+                                <h5>Original</h5>
+                                <div class="hist-wrap"><canvas id="histOriginal"></canvas></div>
+                            </div>
+                            <div class="mini-panel">
+                                <h5>HE</h5>
+                                <div class="hist-wrap"><canvas id="histHE"></canvas></div>
+                            </div>
+                            <div class="mini-panel">
+                                <h5>Our</h5>
+                                <div class="hist-wrap"><canvas id="histOur"></canvas></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="panel">
+                        <h4 class="panel-title">Before vs After (Demo)</h4>
+                        <div id="beforeAfter" class="compare"></div>
+                    </div>
+
+                    <h3 class="section-title">Methods</h3>
+                    <div id="methods" class="grid"></div>
+                </div>
+
+                <div class="card" id="summaryCard" style="display:none;">
+                    <h3 class="section-title">Summary</h3>
+                    <table id="summary"></table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="histModal" class="modal" aria-hidden="true">
+        <div class="modal-card">
+            <div class="modal-head">
+                <strong id="modalTitle">Histogram Detail</strong>
+                <button id="modalClose" type="button">Close</button>
+            </div>
+            <div class="modal-grid">
+                <div class="image-box" id="modalImage"></div>
+                <div class="mini-panel">
+                    <h5>Intensity Histogram</h5>
+                    <div class="hist-wrap" style="height: 220px;"><canvas id="modalHist"></canvas></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+
+    <script>
+        const state = { files: [], data: null, selected: 0 };
+        const histCache = new Map();
+        const fileInput = document.getElementById("files");
+        const browse = document.getElementById("browse");
+        const run = document.getElementById("run");
+        const exportReport = document.getElementById("exportReport");
+        const drop = document.getElementById("drop");
+        const selected = document.getElementById("selected");
+        const status = document.getElementById("status");
+        const errorEl = document.getElementById("error");
+        const modal = document.getElementById("histModal");
+        const modalClose = document.getElementById("modalClose");
+
+        modalClose.onclick = closeModal;
+        modal.onclick = (e) => {
+            if (e.target === modal) closeModal();
+        };
+
+        browse.onclick = () => fileInput.click();
+        exportReport.onclick = exportReportScreenshots;
+        fileInput.onchange = () => setFiles([...fileInput.files]);
+        drop.onclick = () => fileInput.click();
+        drop.ondragover = (e) => { e.preventDefault(); drop.classList.add("drag"); };
+        drop.ondragleave = () => drop.classList.remove("drag");
+        drop.ondrop = (e) => { e.preventDefault(); drop.classList.remove("drag"); setFiles([...e.dataTransfer.files]); };
+
+        run.onclick = async () => {
+            errorEl.textContent = "";
+            if (!state.files.length) {
+                errorEl.textContent = "Select at least one file.";
+                return;
+            }
+            setBusy(true, "Running notebook pipeline...");
+            try {
+                const fd = new FormData();
+                state.files.forEach((f) => fd.append("files", f));
+                const res = await fetch("/api/process", { method: "POST", body: fd });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || "Processing failed");
+                state.data = data;
+                state.selected = 0;
+                render();
+                setBusy(false, "Completed");
+            } catch (e) {
+                setBusy(false, "");
+                errorEl.textContent = e.message || String(e);
+            }
+        };
+
+        function setBusy(busy, msg) {
+            run.disabled = busy;
+            browse.disabled = busy;
+            exportReport.disabled = busy || !state.data || !state.data.images || !state.data.images.length;
+            status.textContent = msg || "";
+            status.classList.toggle("ok", !busy && !!msg);
+        }
+
+        function setFiles(files) {
+            state.files = files.filter((f) => f.type.startsWith("image/") || f.name.toLowerCase().endsWith(".zip"));
+            selected.textContent = state.files.length ? state.files.map((f) => f.name).join("\n") : "No files selected.";
+        }
+
+        function render() {
+            const resultCard = document.getElementById("resultCard");
+            const summaryCard = document.getElementById("summaryCard");
+            const imageTabs = document.getElementById("imageTabs");
+            const methods = document.getElementById("methods");
+            const selectedImage = document.getElementById("selectedImage");
+            const beforeAfter = document.getElementById("beforeAfter");
+            const summary = document.getElementById("summary");
+            if (!state.data || !state.data.images || !state.data.images.length) {
+                resultCard.style.display = "none";
+                summaryCard.style.display = "none";
+                return;
+            }
+            resultCard.style.display = "block";
+            summaryCard.style.display = "block";
+            imageTabs.innerHTML = "";
+            state.data.images.forEach((img, idx) => {
+                const b = document.createElement("button");
+                b.className = `chip${idx === state.selected ? " active" : ""}`;
+                b.textContent = img.name;
+                b.onclick = () => { state.selected = idx; render(); };
+                imageTabs.appendChild(b);
+            });
+            const current = state.data.images[state.selected];
+
+            const original = (current.methods || []).find((m) => m.name === "Original");
+            selectedImage.innerHTML = original
+                ? `<img src="${original.imageUrl}" alt="${current.name}">`
+                : `<div class="muted" style="padding:14px;">Original image not available.</div>`;
+
+
+            const he = (current.methods || []).find((m) => m.name === "HE");
+            const our = (current.methods || []).find((m) => m.name === "Our");
+
+            beforeAfter.innerHTML = `
+                <div class="mini-panel">
+                    <h5>Original</h5>
+                    <div class="image-box">${original ? `<img src="${original.imageUrl}" alt="Original">` : ""}</div>
+                </div>
+                <div class="mini-panel">
+                    <h5>Our Method</h5>
+                    <div class="image-box">${our ? `<img src="${our.imageUrl}" alt="Our Method">` : ""}</div>
+                </div>
+            `;
+
+            renderComparisonHists(original, he, our);
+
+            methods.innerHTML = "";
+            (current.methods || []).forEach((m) => {
+                const div = document.createElement("div");
+                div.className = "method";
+                div.innerHTML = `
+          <h4>${m.name}</h4>
+          <img src="${m.imageUrl}" alt="${m.name}">
+          <div class="metrics">
+            PSNR: ${Number(m.metrics.PSNR).toFixed(3)}<br>
+            SSIM: ${Number(m.metrics.SSIM).toFixed(3)}<br>
+            Entropy: ${Number(m.metrics.Entropy).toFixed(3)}<br>
+            Contrast: ${Number(m.metrics.Contrast).toFixed(3)}
+          </div>`;
+                div.onclick = () => openHistogramModal(m);
+                methods.appendChild(div);
+            });
+            const rows = state.data.summary || [];
+            summary.innerHTML = `<thead><tr><th>Method</th><th>PSNR</th><th>SSIM</th><th>Entropy</th><th>Contrast</th></tr></thead><tbody>${rows.map((r) => `<tr><td>${r.method}</td><td>${Number(r.PSNR).toFixed(3)}</td><td>${Number(r.SSIM).toFixed(3)}</td><td>${Number(r.Entropy).toFixed(3)}</td><td>${Number(r.Contrast).toFixed(3)}</td></tr>`).join("")}</tbody>`;
+
+            exportReport.disabled = false;
+        }
+
+        async function exportReportScreenshots() {
+            errorEl.textContent = "";
+            if (!state.data || !state.data.images || !state.data.images.length) {
+                errorEl.textContent = "Run processing first, then export report screenshots.";
+                return;
+            }
+
+            if (typeof html2canvas === "undefined" || typeof JSZip === "undefined") {
+                errorEl.textContent = "Export libraries could not be loaded. Check your internet connection and retry.";
+                return;
+            }
+
+            const sections = [
+                { id: "resultCard", name: "01-results.png" },
+                { id: "summaryCard", name: "02-summary-table.png" }
+            ];
+
+            try {
+                setBusy(true, "Capturing report screenshots...");
+                const zip = new JSZip();
+
+                for (const section of sections) {
+                    const node = document.getElementById(section.id);
+                    if (!node) continue;
+
+                    const canvas = await html2canvas(node, {
+                        backgroundColor: "#ffffff",
+                        scale: 2,
+                        useCORS: true,
+                        logging: false,
+                    });
+
+                    const base64 = canvas.toDataURL("image/png").split(",")[1];
+                    zip.file(section.name, base64, { base64: true });
+                }
+
+                const summaryJson = JSON.stringify(state.data.summary || [], null, 2);
+                zip.file("04-summary-data.json", summaryJson);
+
+                const blob = await zip.generateAsync({ type: "blob" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "waveletenhance-report-screenshots.zip";
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(url);
+
+                setBusy(false, "Report screenshots downloaded.");
+            } catch (err) {
+                setBusy(false, "");
+                errorEl.textContent = err?.message || String(err);
+            }
+        }
+
+        async function openHistogramModal(method) {
+            document.getElementById("modalTitle").textContent = `${method.name} - Histogram`;
+            document.getElementById("modalImage").innerHTML = `<img src="${method.imageUrl}" alt="${method.name}">`;
+            modal.classList.add("open");
+            modal.setAttribute("aria-hidden", "false");
+            const hist = await getHistogram(method.imageUrl);
+            drawHistogram(document.getElementById("modalHist"), hist, "#2563eb");
+        }
+
+        function closeModal() {
+            modal.classList.remove("open");
+            modal.setAttribute("aria-hidden", "true");
+        }
+
+        async function renderComparisonHists(original, he, our) {
+            const targets = [
+                { canvas: document.getElementById("histOriginal"), method: original, color: "#64748b" },
+                { canvas: document.getElementById("histHE"), method: he, color: "#2563eb" },
+                { canvas: document.getElementById("histOur"), method: our, color: "#ef4444" }
+            ];
+
+            for (const item of targets) {
+                if (!item.canvas) continue;
+                if (!item.method || !item.method.imageUrl) {
+                    drawHistogram(item.canvas, new Array(64).fill(0), item.color);
+                    continue;
+                }
+                const hist = await getHistogram(item.method.imageUrl);
+                drawHistogram(item.canvas, hist, item.color);
+            }
+        }
+
+        async function getHistogram(imageUrl) {
+            if (histCache.has(imageUrl)) return histCache.get(imageUrl);
+            const img = new Image();
+            img.decoding = "async";
+            img.src = imageUrl;
+            await img.decode();
+
+            const cvs = document.createElement("canvas");
+            cvs.width = 256;
+            cvs.height = 256;
+            const ctx = cvs.getContext("2d");
+            ctx.drawImage(img, 0, 0, 256, 256);
+            const pixels = ctx.getImageData(0, 0, 256, 256).data;
+            const bins = new Array(64).fill(0);
+
+            for (let i = 0; i < pixels.length; i += 4) {
+                const lum = Math.round(0.299 * pixels[i] + 0.587 * pixels[i + 1] + 0.114 * pixels[i + 2]);
+                const idx = Math.min(63, Math.floor(lum / 4));
+                bins[idx] += 1;
+            }
+
+            histCache.set(imageUrl, bins);
+            return bins;
+        }
+
+        function drawHistogram(canvas, bins, color) {
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            const width = Math.max(220, Math.floor(rect.width || canvas.clientWidth || 240));
+            const height = Math.max(100, Math.floor(rect.height || canvas.clientHeight || 110));
+            canvas.width = width * dpr;
+            canvas.height = height * dpr;
+
+            const ctx = canvas.getContext("2d");
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            ctx.clearRect(0, 0, width, height);
+
+            const max = Math.max(...bins, 1);
+            const barWidth = width / bins.length;
+            ctx.fillStyle = color;
+
+            let weighted = 0;
+            let total = 0;
+
+            bins.forEach((v, i) => {
+                const h = (v / max) * (height - 12);
+                ctx.globalAlpha = 0.82;
+                ctx.fillRect(i * barWidth + 0.8, height - h, Math.max(1, barWidth - 1.6), h);
+                weighted += i * v;
+                total += v;
+            });
+            ctx.globalAlpha = 1;
+
+            const mean = total > 0 ? weighted / total : 0;
+            const meanX = (mean / (bins.length - 1)) * width;
+            ctx.strokeStyle = "#f59e0b";
+            ctx.lineWidth = 2;
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            ctx.moveTo(meanX, 0);
+            ctx.lineTo(meanX, height);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+    </script>
+</body>
+
+</html>
